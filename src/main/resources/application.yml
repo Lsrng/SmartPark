@@ -1,0 +1,58 @@
+server:
+  port: 8086
+
+spring:
+  profiles:
+    active: dev
+  main:
+    allow-circular-references: true
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/smart_park?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: "1234"
+  data:
+    redis:
+      database: 0
+      host: localhost
+      port: 6380
+      password: "1234"
+
+jwt:
+  secret-key: V8ZigEhihMdQN_934VJFhRAC-mYR8nZrTaOz6QwDC74=
+  expiration: 14400000    #单位:ms ,共4h
+  token-name: token
+
+# SpringDoc 配置
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html  # Swagger UI路径
+    tags-sorter: alpha      # 标签排序方式
+    operations-sorter: alpha # 接口排序方式
+    doc-expansion: none     # 默认不展开文档
+  api-docs:
+    path: /v3/api-docs      # OpenAPI JSON路径
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
+
+# Knife4j 配置
+knife4j:
+  enable: true
+  setting:
+    language: zh-CN         # 语言
+    enable-footer: false    # 不显示页脚
+    enable-swagger-model: true
+  production: false         # 非生产环境
+
+# Resilience4j 断路器配置
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: 10           # 统计最近 10 次调用
+        failure-rate-threshold: 50        # 失败率超过 50% 触发熔断
+        wait-duration-in-open-state: 60s  # 熔断持续 60 秒
+        permitted-number-of-calls-in-half-open-state: 1  # 半开时放行 1 个试探请求
+        record-exceptions:                # 记录为失败的异常类型
+          - org.redisson.client.RedisException
+
