@@ -14,7 +14,7 @@ spring:
   data:
     redis:
       database: 0
-      host: 8.134.174.117
+      host: 
       port: 6380
       password: "1234"
 
