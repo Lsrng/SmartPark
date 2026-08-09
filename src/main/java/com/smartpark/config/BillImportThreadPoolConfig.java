@@ -11,7 +11,7 @@ import java.util.concurrent.ThreadPoolExecutor;
  * 物业账单导入线程池配置
  * <p>
  * 使用独立的线程池隔离导入任务，与 Tomcat 线程池解耦。
- * 核心线程数 2，最大线程数 4，队列容量 10，拒绝策略 CallerRunsPolicy。
+ * 核心线程数 = 最大线程数 = 2 * CPU核数，队列容量 100，拒绝策略 CallerRunsPolicy。
  * </p>
  */
 @Configuration
@@ -24,12 +24,14 @@ public class BillImportThreadPoolConfig {
         org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor executor =
                 new org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor();
 
-        // 同时最多执行 2 个导入任务
-        executor.setCorePoolSize(2);
-        // 高峰期最多 4 个（队列满时才会创建超过 core 的线程）
-        executor.setMaxPoolSize(4);
-        // 等待队列容量，最多 10 个任务排队
-        executor.setQueueCapacity(10);
+        int cpuCores = Runtime.getRuntime().availableProcessors();
+        int threadCount = cpuCores * 2;
+        // 核心线程数 = 2 * CPU 核数
+        executor.setCorePoolSize(threadCount);
+        // 最大线程数 = 2 * CPU 核数（与核心线程数相同，全部为常驻线程）
+        executor.setMaxPoolSize(threadCount);
+        // 等待队列容量，最多 100 个任务排队
+        executor.setQueueCapacity(100);
         // 空闲线程存活时间（秒），导入为 IO 密集型，设长一些
         executor.setKeepAliveSeconds(120);
         // 线程名前缀，方便日志排查
@@ -43,7 +45,8 @@ public class BillImportThreadPoolConfig {
 
         executor.initialize();
 
-        log.info("物业账单导入线程池已初始化 - corePoolSize=2, maxPoolSize=4, queueCapacity=10");
+        log.info("物业账单导入线程池已初始化 - corePoolSize={}, maxPoolSize={}, queueCapacity=100, cpuCores={}",
+                threadCount, threadCount, cpuCores);
         return executor;
     }
 }

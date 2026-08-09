@@ -14,7 +14,7 @@ spring:
   data:
     redis:
       database: 0
-      host: 8.134.174.117
+      host:
       port: 6380
       password: "1234"
 
@@ -44,6 +44,23 @@ knife4j:
     enable-swagger-model: true
   production: false         # 非生产环境
 
+# 敏感接口频率旁路监控配置
+smartpark:
+  monitor:
+    enabled: true                  # 总开关：false 时监控整体下线
+    cooldown:
+      strategy: fixed              # fixed / exponential
+      base-duration: 10m           # 基础冷却时长：问题持续期每 10 分钟至多 1 条摘要告警
+      max-duration: 60m            # 指数退避上限
+    sms:
+      phones:
+        - 13800138000              # 告警短信收件人（当前为日志模拟发送）
+      thread-pool:
+        core: 2
+        max: 4
+        queue-capacity: 1000       # 短信任务队列上限
+        rejection-policy: caller-runs   # 队列满时由提交线程执行，不丢告警
+
 # Resilience4j 断路器配置
 resilience4j:
   circuitbreaker:
@@ -55,4 +72,34 @@ resilience4j:
         permitted-number-of-calls-in-half-open-state: 1  # 半开时放行 1 个试探请求
         record-exceptions:                # 记录为失败的异常类型
           - org.redisson.client.RedisException
+    instances:
+      monitorRedisCircuitBreaker:         # 监控链路专用断路器（独立实例，故障自隔离）
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 1
+
+# 文件上传安全配置
+smartpark:
+  upload:
+    storage-path: uploads                    # 存储根目录
+    max-file-size-mb: 10                     # 单文件大小上限
+    max-image-memory-mb: 256                 # 图片重编码内存上限
+    allowed-extensions:                      # 后缀白名单
+      - .jpg
+      - .jpeg
+      - .png
+      - .gif
+      - .bmp
+      - .pdf
+      - .docx
+      - .xlsx
+      - .pptx
+    image-extensions:                        # 需要重编码的图片类型
+      - .jpg
+      - .jpeg
+      - .png
+      - .gif
+      - .bmp
+    min-zip-entries: 3                       # ZIP 最少条目数
 

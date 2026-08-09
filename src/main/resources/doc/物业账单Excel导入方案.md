@@ -277,7 +277,7 @@ src/main/java/com/smartpark/
 
 ### 5.4 各组件职责
 
-- **`BillImportThreadPoolConfig`**：使用 `@Configuration` 和 `@Bean` 定义一个 `ThreadPoolTaskExecutor`，设置核心线程数为 2，最大线程数为 4，队列容量为 10，线程名前缀为 `bill-import-`，拒绝策略为 `CallerRunsPolicy`，开启优雅关闭。
+- **`BillImportThreadPoolConfig`**：使用 `@Configuration` 和 `@Bean` 定义一个 `ThreadPoolTaskExecutor`，核心线程数 = 最大线程数 = 2 * CPU 核数，队列容量为 100，线程名前缀为 `bill-import-`，拒绝策略为 `CallerRunsPolicy`，开启优雅关闭。
 
 - **`BillImportController`**：提供两个 REST 接口。POST 接口接收 `MultipartFile`，调用 Service 创建导入任务并返回 taskId。GET 接口根据 taskId 查询导入任务的状态和结果。
 
@@ -301,7 +301,7 @@ src/main/java/com/smartpark/
 
 3. Controller 将 taskId 封装为 `{ taskId }` 返回给前端，HTTP 响应立即返回。此时前端的请求处理完毕，耗时通常在几十毫秒以内。
 
-4. BillImportServiceImpl 将导入任务提交到 BillImportExecutor 线程池。如果线程池有空闲线程，任务立即执行。如果当前已有 2 个任务在执行，新任务进入等待队列。如果队列中也满了（超过 10 个任务排队），则触发 CallerRunsPolicy 拒绝策略，由提交线程（Tomcat 线程）自己执行任务。这种设计保证了在任何情况下都不会因为导入任务过多而导致系统崩溃。
+4. BillImportServiceImpl 将导入任务提交到 BillImportExecutor 线程池。如果线程池有空闲线程，任务立即执行。如果所有核心线程（2 * CPU 核数）都在执行，新任务进入等待队列（最多 100 个任务排队）。如果队列中也满了，则触发 CallerRunsPolicy 拒绝策略，由提交线程（Tomcat 线程）自己执行任务。这种设计保证了在任何情况下都不会因为导入任务过多而导致系统崩溃。
 
 5. 线程池中的 Worker 线程开始执行导入任务。首先将导入记录的状态从 PENDING 更新为 PROCESSING。
 
@@ -325,13 +325,13 @@ src/main/java/com/smartpark/
 
 Spring Boot 项目中有三种创建线程池的方式：一是 JDK 自带的 `Executors` 工具类，但其 `newFixedThreadPool` 使用无界队列存在 OOM 风险，`newCachedThreadPool` 最大线程数无上限可能打爆系统，阿里巴巴开发规范已明确禁止使用。二是直接 `new ThreadPoolExecutor`，但需要手动管理生命周期和优雅关闭。三是 Spring 提供的 `ThreadPoolTaskExecutor`，它是对 `ThreadPoolExecutor` 的封装，自动随 Spring 容器启停，支持优雅关闭和监控集成，是 Spring 项目中的最佳实践。
 
-**各参数的选择依据**
+**各参数的选择依据**（以 4 核 CPU 服务器为例）
 
-核心线程数设为 2。导入任务是 IO 密集型操作，瓶颈在数据库写入而不是 CPU 运算。单线程处理万行数据大约需要 20 到 30 秒，2 个线程同时处理可以满足物业月度账单的日常导入量，也不会因为过多并发写入导致数据库连接池争抢。
+核心线程数和最大线程数都设为 2 * CPU 核数（8）。核心线程数与最大线程数相同，意味着所有线程都是常驻线程，不需要动态创建和销毁。按 IO 密集型场景的线程数公式，充分利用多核优势。导入任务是 IO 密集型操作，瓶颈在数据库写入而不是 CPU 运算。8 个并行线程处理万行数据，单任务耗时约 8 到 12 秒，可以满足物业月度账单的日常导入量。
 
-最大线程数设为 4，队列容量设为 10。ThreadPoolTaskExecutor 的线程创建逻辑是：先填满核心线程，然后任务进入队列，队列满了才会创建新线程直到最大线程数。正常场景下 2 个核心线程加 10 个队列已经足够应对日常并发，最大线程 4 作为安全余量在极端高峰时提供缓冲。
+队列容量设为 100。中等队列容量可以缓冲月度批量导入高峰的并发请求（通常 20~50 并发），不轻易触发拒绝策略。排队 100 个任务（每个约 10 秒），最长等待约 16.7 分钟，在业务可接受范围内。如果队列太小（如 10），月度批量导入时很容易触发 CallerRunsPolicy，导致 Tomcat 线程被占用，影响账单查询、缴费等核心业务接口。
 
-拒绝策略选择 CallerRunsPolicy。队列和线程池都满时，由提交任务的 Tomcat 线程自己执行导入。这意味着高峰期用户上传时的 HTTP 响应会变慢，但任务不会丢失。相比 AbortPolicy 的抛异常拒绝和 DiscardPolicy 的静默丢弃，CallerRunsPolicy 最适合导入导出这类对数据完整性要求高的业务。
+拒绝策略选择 CallerRunsPolicy。队列和线程池都满时（108+ 并发），由提交任务的 Tomcat 线程自己执行导入。这意味着极端高峰期用户上传时的 HTTP 响应会变慢，但任务不会丢失。相比 AbortPolicy 的抛异常拒绝和 DiscardPolicy 的静默丢弃，CallerRunsPolicy 最适合导入导出这类对数据完整性要求高的业务。
 
 空闲线程存活时间设为 120 秒，因为导入是低频操作，额外线程创建后保留时间长一些可以在短时间内复用，避免反复创建和销毁的开销。同时开启优雅关闭，设置最多等待 30 秒，确保服务重启时正在执行的导入任务能够完成，避免数据写入中断导致的状态不一致。
 
@@ -339,15 +339,17 @@ Spring Boot 项目中有三种创建线程池的方式：一是 JDK 自带的 `E
 @Bean("billImportExecutor")
 public ThreadPoolTaskExecutor billImportExecutor() {
     ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-    executor.setCorePoolSize(2);                    
-    executor.setMaxPoolSize(4);                     
-    executor.setQueueCapacity(10);                  
-    executor.setKeepAliveSeconds(120);              
-    executor.setThreadNamePrefix("bill-import-");   
+    int cpuCores = Runtime.getRuntime().availableProcessors();
+    int threadCount = cpuCores * 2;
+    executor.setCorePoolSize(threadCount);              // 核心线程数 = 2 * CPU 核数
+    executor.setMaxPoolSize(threadCount);               // 最大线程数 = 2 * CPU 核数（全部常驻）
+    executor.setQueueCapacity(100);                     // 等待队列容量 100
+    executor.setKeepAliveSeconds(120);                  // 空闲线程存活时间
+    executor.setThreadNamePrefix("bill-import-");       // 线程名前缀
     executor.setRejectedExecutionHandler(
-        new ThreadPoolExecutor.CallerRunsPolicy()); 
-    executor.setWaitForTasksToCompleteOnShutdown(true);  
-    executor.setAwaitTerminationSeconds(30);             
+        new ThreadPoolExecutor.CallerRunsPolicy());    // 拒绝策略
+    executor.setWaitForTasksToCompleteOnShutdown(true);  // 优雅关闭
+    executor.setAwaitTerminationSeconds(30);             // 最多等待 30s
     executor.initialize();
     return executor;
 }
@@ -433,7 +435,7 @@ Excel 模板共包含 11 个字段。
 
 第六个边界情况是服务重启保护。通过线程池的 `setWaitForTasksToCompleteOnShutdown(true)` 结合 `setAwaitTerminationSeconds(30)`，确保容器关闭时正在执行的导入任务可以正常完成。如果服务非正常崩溃，正在处理中的任务会处于 PROCESSING 状态，后续可以通过定时任务或人工干预来处理这些悬挂任务。
 
-第七个边界情况是并发控制。线程池核心线程数为 2，队列容量为 10，所以同时最多处理 2 个导入任务，另有 10 个任务在等待队列中。超出这个数量的请求会触发 CallerRunsPolicy，由提交线程同步执行。这种设计保证了在任何情况下都不会因为导入任务过多而导致数据库被打满。
+第七个边界情况是并发控制。线程池核心线程数 = 最大线程数 = 2 * CPU 核数（以 4 核为例为 8），队列容量为 100，所以同时最多处理 8 个导入任务，另有 100 个任务在等待队列中。超出这个数量（108+ 并发）的请求会触发 CallerRunsPolicy，由提交线程同步执行。这种设计保证了在任何情况下都不会因为导入任务过多而导致数据库被打满。
 
 第八个边界情况是 Excel 模板格式校验。如果上传的 Excel 缺少必要的列或列的顺序不对，EasyExcel 的注解映射会失败。需要在监听器的头部读取阶段校验表头是否与预期一致，不一致则直接终止处理并返回错误。
 
