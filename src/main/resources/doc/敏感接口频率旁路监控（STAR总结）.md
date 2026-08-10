@@ -115,7 +115,7 @@
 
 - **`@FrequencyMonitor` 注解**（声明监控维度）：`@Repeatable` 支持多维度叠加；`globalAlert` + `globalLimit/globalWindowSeconds` 独立全局水位阈值
 - **`FrequencyMonitorAspect` 切面**（旁路判定 + 触发告警）：SpEL key 解析缓存（`ConcurrentHashMap<Method, Expression>`）；`configured` 速率配置缓存（仅首次 `trySetRate`）；`judgeAndAlert` 复用账号/全局判定
-- **`AlertCoordinator` 协调器**（冷却 + 异步短信）：SET NX EX 原子占位实现冷却去重，接受冷却期盲区；Redis 不可用时 `ConcurrentHashMap` 本地冷却兜底
+- **`AlertCoordinator` 协调器**（冷却 + 异步短信）：SET NX EX 原子占位实现冷却去重，接受冷却期盲区；冷却判定与限流判定共用 `monitorRedisCircuitBreaker` 断路器，实现「一次降级，全局降级」：CLOSED 状态执行 Redis 操作，失败后降级 `ConcurrentHashMap` 本地冷却；OPEN 状态直接走本地兜底（零延迟）
 - **`SmsSender` 抽象**（短信通道）：接口 + `LogSmsSender` 日志模拟；实现类自带失败重试（2 次指数退避），可平滑接阿里云/腾讯云
 - **`MonitorGuavaLimiterManager`**（兜底限流器）：`ConcurrentHashMap.computeIfAbsent` + 每 10 分钟清理不活跃实例
 - **`monitorRedisCircuitBreaker`**（熔断隔离）：独立实例（sliding-window-size=10 / failure-rate 50%），监控链路故障自隔离

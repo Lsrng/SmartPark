@@ -3,6 +3,9 @@ package com.smartpark.monitor.support;
 import com.smartpark.monitor.annotation.FrequencyMonitor;
 import com.smartpark.monitor.config.MonitorProperties;
 import com.smartpark.monitor.sender.SmsSender;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <ul>
  *   <li><b>冷却降噪</b>：Redis {@code SET key NX EX} 原子占位，冷却期内重复超线被静默，无效告警降 99%+，多实例天然去重</li>
  *   <li><b>接受冷却期盲区</b>：冷却期内的超线信息会丢失，这是降噪的必然代价——敏感接口场景下，持续攻击一定会突破冷却，偶发误操作不需要持续关注</li>
+ *   <li><b>统一断路器</b>：冷却判定与限流判定共用同一个 {@code monitorRedisCircuitBreaker} 断路器，实现「一次降级，全局降级」，保证状态一致性</li>
  *   <li><b>异步短信</b>：独立线程池发送，不占用业务线程</li>
  * </ul>
  */
@@ -39,14 +43,21 @@ public class AlertCoordinator {
     private final StringRedisTemplate redisTemplate;
     private final SmsSender smsSender;
     private final MonitorProperties properties;
+    private final CircuitBreakerRegistry circuitBreakerRegistry;
 
     /** Redis 不可用时本地冷却兜底：key -> 到期时间戳 */
     private final ConcurrentHashMap<String, Long> localCooldown = new ConcurrentHashMap<>();
 
     private volatile ThreadPoolExecutor alertExecutor;
+    private CircuitBreaker circuitBreaker;
 
     @PostConstruct
     public void init() {
+        // 与限流判定共用同一个断路器，实现「一次降级，全局降级」
+        circuitBreaker = circuitBreakerRegistry.circuitBreaker("monitorRedisCircuitBreaker");
+        log.info("冷却判定断路器初始化 - name: {}, state: {}",
+                circuitBreaker.getName(), circuitBreaker.getState());
+
         ThreadFactory namedFactory = new ThreadFactory() {
             private final AtomicInteger threadNumber = new AtomicInteger(1);
             @Override
@@ -74,6 +85,11 @@ public class AlertCoordinator {
     /**
      * 超线事件入口：冷却判定 → 通过则异步发短信
      * <p>
+     * 使用 Resilience4j 断路器统一处理冷却判定的 Redis 操作：
+     * 1. 断路器 CLOSED 状态：执行 Redis 操作，失败后走本地兜底
+     * 2. 断路器 OPEN 状态：直接走本地兜底（零延迟，更高效）
+     * </p>
+     * <p>
      * 接受冷却期盲区：冷却期内所有超线请求被静默，信息丢失。
      * 这是降噪的必然代价——敏感接口场景下，持续攻击一定会突破冷却（10分钟后再次超线），
      * 偶发误操作（只触发1次告警）不需要持续关注。
@@ -85,15 +101,22 @@ public class AlertCoordinator {
     public void onOverLimit(FrequencyMonitor fm, String key) {
         long cooldownMillis = properties.getCooldown().baseDurationMillis();
 
-        // 1. 冷却判定：SET NX EX，原子操作
+        // 1. 冷却判定：用 Resilience4j 断路器包裹，统一处理降级逻辑
         boolean pass;
         try {
-            long cooldownSeconds = cooldownMillis / 1000;
-            Boolean first = redisTemplate.opsForValue()
-                    .setIfAbsent("monitor:cooldown:" + key, "1", cooldownSeconds, TimeUnit.SECONDS);
-            pass = Boolean.TRUE.equals(first);
+            pass = circuitBreaker.executeSupplier(() -> {
+                long cooldownSeconds = cooldownMillis / 1000;
+                Boolean first = redisTemplate.opsForValue()
+                        .setIfAbsent("monitor:cooldown:" + key, "1", cooldownSeconds, TimeUnit.SECONDS);
+                return Boolean.TRUE.equals(first);
+            });
+        } catch (CallNotPermittedException e) {
+            // 断路器 OPEN 状态：Redis 故障，直接走本地兜底（零延迟）
+            log.warn("冷却判定断路器 OPEN，走本地兜底 - key: {}", key);
+            pass = tryLocalCooldown(key, cooldownMillis);
         } catch (Exception e) {
-            // Redis 不可用：降级本地冷却（单实例内同样去重）
+            // 断路器 CLOSED 但 Redis 操作失败（瞬态异常），走本地兜底
+            log.warn("冷却判定 Redis 异常，走本地兜底 - key: {}, err: {}", key, e.getMessage());
             pass = tryLocalCooldown(key, cooldownMillis);
         }
 
