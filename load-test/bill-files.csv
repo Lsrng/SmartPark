@@ -1,0 +1,10 @@
+file_path,file_name,file_size_kb,row_count
+E:/后端/项目练习/smartPark/load-test/test-files/bill-1k-50kb.xlsx,bill-1k.xlsx,72,1000
+E:/后端/项目练习/smartPark/load-test/test-files/bill-5k-250kb.xlsx,bill-5k.xlsx,339,5000
+E:/后端/项目练习/smartPark/load-test/test-files/bill-10k-500kb.xlsx,bill-10k.xlsx,671,10000
+E:/后端/项目练习/smartPark/load-test/test-files/bill-20k-1mb.xlsx,bill-20k.xlsx,1339,20000
+E:/后端/项目练习/smartPark/load-test/test-files/bill-50k-2.5mb.xlsx,bill-50k.xlsx,3342,50000
+E:/后端/项目练习/smartPark/load-test/test-files/bill-100k-5mb.xlsx,bill-100k.xlsx,6681,100000
+E:/后端/项目练习/smartPark/load-test/test-files/bill-tiny-100rows.xlsx,bill-tiny.xlsx,12,100
+E:/后端/项目练习/smartPark/load-test/test-files/bill-empty.xlsx,bill-empty.xlsx,4,0
+E:/后端/项目练习/smartPark/load-test/test-files/bill-oversize-6mb.xlsx,bill-oversize.xlsx,8021,120000

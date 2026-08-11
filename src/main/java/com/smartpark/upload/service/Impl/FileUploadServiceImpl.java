@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -88,7 +89,6 @@ public class FileUploadServiceImpl implements FileUploadService {
             RecodeResult recodeResult = recodeImage(file, detectionResult, detectedExtension);
             storageStream = recodeResult.stream();
             finalFileSize = recodeResult.size();
-            long maxSize = (long) properties.getMaxFileSizeMb() * 1024 * 1024;
             if (finalFileSize > maxSize) {
                 throw new FileSizeExceededException(
                         String.format("图片重编码后大小 %d 超过最大限制 %dMB", finalFileSize, properties.getMaxFileSizeMb()));

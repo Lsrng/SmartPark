@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@MapperScan("com.smartpark.mapper")
+@MapperScan({"com.smartpark.mapper", "com.smartpark.upload.mapper"})
 public class MybatisPlusConfig {
 
     /**

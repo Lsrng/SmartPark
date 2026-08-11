@@ -60,27 +60,7 @@ smartpark:
         max: 4
         queue-capacity: 1000       # 短信任务队列上限
         rejection-policy: caller-runs   # 队列满时由提交线程执行，不丢告警
-
-# Resilience4j 断路器配置
-resilience4j:
-  circuitbreaker:
-    configs:
-      default:
-        sliding-window-size: 10           # 统计最近 10 次调用
-        failure-rate-threshold: 50        # 失败率超过 50% 触发熔断
-        wait-duration-in-open-state: 60s  # 熔断持续 60 秒
-        permitted-number-of-calls-in-half-open-state: 1  # 半开时放行 1 个试探请求
-        record-exceptions:                # 记录为失败的异常类型
-          - org.redisson.client.RedisException
-    instances:
-      monitorRedisCircuitBreaker:         # 监控链路专用断路器（独立实例，故障自隔离）
-        sliding-window-size: 10
-        failure-rate-threshold: 50
-        wait-duration-in-open-state: 60s
-        permitted-number-of-calls-in-half-open-state: 1
-
-# 文件上传安全配置
-smartpark:
+  # 文件上传安全配置
   upload:
     storage-path: uploads                    # 存储根目录
     max-file-size-mb: 10                     # 单文件大小上限
@@ -102,4 +82,24 @@ smartpark:
       - .gif
       - .bmp
     min-zip-entries: 3                       # ZIP 最少条目数
+
+# Resilience4j 断路器配置
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: 10           # 统计最近 10 次调用
+        failure-rate-threshold: 50        # 失败率超过 50% 触发熔断
+        wait-duration-in-open-state: 60s  # 熔断持续 60 秒
+        permitted-number-of-calls-in-half-open-state: 1  # 半开时放行 1 个试探请求
+        record-exceptions:                # 记录为失败的异常类型
+          - org.redisson.client.RedisException
+    instances:
+      monitorRedisCircuitBreaker:         # 监控链路专用断路器（独立实例，故障自隔离）
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 1
+
+
 
