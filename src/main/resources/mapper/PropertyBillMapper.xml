@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smartpark.mapper.PropertyBillMapper">
+
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO property_bill
+        (building_no, unit_no, room_no, owner_name, phone,
+         fee_type, billing_start_date, billing_end_date, amount_due,
+         amount_paid, due_date, status, remark, created_by)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.buildingNo}, #{item.unitNo}, #{item.roomNo},
+             #{item.ownerName}, #{item.phone}, #{item.feeType},
+             #{item.billingStartDate}, #{item.billingEndDate}, #{item.amountDue},
+             #{item.amountPaid}, #{item.dueDate}, #{item.status},
+             #{item.remark}, #{item.createdBy})
+        </foreach>
+    </insert>
+
+</mapper>

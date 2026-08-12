@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.smartpark.common.context.BaseContext;
 import com.smartpark.listener.BillExcelListener;
 import com.smartpark.mapper.PropertyBillImportRecordMapper;
+import com.smartpark.mapper.PropertyBillMapper;
 import com.smartpark.pojo.dto.BillExcelRowDTO;
 import com.smartpark.pojo.entity.PropertyBill;
 import com.smartpark.pojo.entity.PropertyBillImportRecord;
@@ -13,9 +14,6 @@ import com.smartpark.pojo.vo.ImportTaskVO;
 import com.smartpark.service.BillImportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.ibatis.session.ExecutorType;
-import org.apache.ibatis.session.SqlSession;
-import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +24,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -38,11 +37,8 @@ import java.util.UUID;
 public class BillImportServiceImpl implements BillImportService {
 
     private final PropertyBillImportRecordMapper importRecordMapper;
+    private final PropertyBillMapper propertyBillMapper;
     private final ThreadPoolTaskExecutor billImportExecutor;
-    private final SqlSessionFactory sqlSessionFactory;
-
-    /** 允许的最大文件大小：5MB */
-    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024L;
 
     /** 允许的文件扩展名 */
     private static final String ALLOWED_EXTENSION = ".xlsx";
@@ -191,26 +187,42 @@ public class BillImportServiceImpl implements BillImportService {
     }
 
     /**
-     * 分批入库（使用 MyBatis 批量执行器）
+     * 分批入库（使用 XML 定义的批量 SQL）
      */
     private int batchInsertBills(List<BillExcelRowDTO> rows) {
         Long currentUserId = BaseContext.getCurrentId();
-        int inserted = 0;
+        int batchSize = 1000;
+        int totalInserted = 0;
 
-        try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
-            com.smartpark.mapper.PropertyBillMapper batchMapper =
-                    sqlSession.getMapper(com.smartpark.mapper.PropertyBillMapper.class);
-
-            for (BillExcelRowDTO row : rows) {
-                PropertyBill bill = buildPropertyBill(row, currentUserId);
-                batchMapper.insert(bill);
-                inserted++;
-            }
-
-            sqlSession.commit();
+        // 转换为实体列表
+        List<PropertyBill> bills = new ArrayList<>(rows.size());
+        for (BillExcelRowDTO row : rows) {
+            bills.add(buildPropertyBill(row, currentUserId));
         }
 
-        return inserted;
+        // 分批执行批量插入
+        for (int i = 0; i < bills.size(); i += batchSize) {
+            int endIndex = Math.min(i + batchSize, bills.size());
+            List<PropertyBill> batch = bills.subList(i, endIndex);
+
+            try {
+                propertyBillMapper.batchInsert(batch);
+                totalInserted += batch.size();
+                log.debug("批量插入成功 - batch: {}-{}, size: {}", i, endIndex, batch.size());
+            } catch (Exception e) {
+                log.warn("批量插入失败，降级为单条处理 - batch {}: {}", i, e.getMessage());
+                for (PropertyBill bill : batch) {
+                    try {
+                        propertyBillMapper.insert(bill);
+                        totalInserted++;
+                    } catch (Exception ex) {
+                        log.error("单条插入失败 - roomNo: {}", bill.getRoomNo(), ex);
+                    }
+                }
+            }
+        }
+
+        return totalInserted;
     }
 
     /**
@@ -258,12 +270,6 @@ public class BillImportServiceImpl implements BillImportService {
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("上传文件不能为空");
-        }
-
-        // 文件大小校验
-        if (file.getSize() > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("文件大小超过限制（最大 5MB），当前文件大小: " +
-                    (file.getSize() / 1024 / 1024) + "MB");
         }
 
         // 文件后缀校验

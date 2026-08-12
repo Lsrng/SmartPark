@@ -154,10 +154,10 @@ if (token != null) {
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="循环控制器" enabled="true">
           <boolProp name="LoopController.continue_forever">false</boolProp>
-          <stringProp name="LoopController.loops">10</stringProp>
+          <stringProp name="LoopController.loops">1</stringProp>
         </elementProp>
-        <stringProp name="ThreadGroup.num_threads">10</stringProp>
-        <stringProp name="ThreadGroup.ramp_time">5</stringProp>
+        <stringProp name="ThreadGroup.num_threads">16</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">10</stringProp>
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
         <stringProp name="ThreadGroup.duration"></stringProp>
         <stringProp name="ThreadGroup.delay"></stringProp>
@@ -168,7 +168,7 @@ if (token != null) {
           <collectionProp name="HeaderManager.headers">
             <elementProp name="Header.1" elementType="Header">
               <stringProp name="Header.name">token</stringProp>
-              <stringProp name="Header.value">eyJhbGciOiJIUzI1NiJ9.eyJpZCI6NSwiZXhwIjoxNzg2NDU2Nzg5LCJpYXQiOjE3ODY0NDIzODksInVzZXJuYW1lIjoiY3hrIn0.TMKO7CuuEpkk_VM4qQrObCIuUPnQOfjRW57ad7Tp-pY</stringProp>
+              <stringProp name="Header.value">eyJhbGciOiJIUzI1NiJ9.eyJpZCI6NSwiZXhwIjoxNzg2NTM3NjQyLCJpYXQiOjE3ODY1MjMyNDIsInVzZXJuYW1lIjoiY3hrIn0.WUgkbrJk-rnkCDUz0jTPR4N-kuGObwIycYglngsnhXU</stringProp>
             </elementProp>
           </collectionProp>
         </HeaderManager>
@@ -176,8 +176,8 @@ if (token != null) {
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST /api/bill/import - 上传账单Excel" enabled="true">
           <elementProp name="HTTPsampler.Files" elementType="HTTPFileArgs">
             <collectionProp name="HTTPFileArgs.files">
-              <elementProp name="E:/后端/项目练习/smartPark/load-test/test-files/bill-5k-250kb.xlsx" elementType="HTTPFileArg">
-                <stringProp name="File.path">E:/后端/项目练习/smartPark/load-test/test-files/bill-5k-250kb.xlsx</stringProp>
+              <elementProp name="E:/后端/项目练习/smartPark/load-test/test-files/bill-20k-1mb.xlsx" elementType="HTTPFileArg">
+                <stringProp name="File.path">E:/后端/项目练习/smartPark/load-test/test-files/bill-20k-1mb.xlsx</stringProp>
                 <stringProp name="File.paramname">file</stringProp>
                 <stringProp name="File.mimetype">application/vnd.openxmlformats-officedocument.spreadsheetml.sheet</stringProp>
               </elementProp>
@@ -238,9 +238,9 @@ log.info(&quot;Task created: &quot; + json.data.taskId + &quot; rows: &quot; + r
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="循环控制器" enabled="true">
           <boolProp name="LoopController.continue_forever">false</boolProp>
-          <stringProp name="LoopController.loops">5</stringProp>
+          <stringProp name="LoopController.loops">1</stringProp>
         </elementProp>
-        <stringProp name="ThreadGroup.num_threads">5</stringProp>
+        <stringProp name="ThreadGroup.num_threads">1</stringProp>
         <stringProp name="ThreadGroup.ramp_time">5</stringProp>
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
         <stringProp name="ThreadGroup.duration"></stringProp>
@@ -252,12 +252,21 @@ log.info(&quot;Task created: &quot; + json.data.taskId + &quot; rows: &quot; + r
           <collectionProp name="HeaderManager.headers">
             <elementProp name="Header.1" elementType="Header">
               <stringProp name="Header.name">token</stringProp>
-              <stringProp name="Header.value">{&quot;code&quot;:200,&quot;msg&quot;:&quot;å¯¼å&#x85;¥ä»»å&#x8a;¡å·²å&#x88;&#x9b;å»º&quot;,&quot;data&quot;:{&quot;taskId&quot;:&quot;1dea3fdfc48549d4b786e06ab0d4f399&quot;,&quot;status&quot;:&quot;PENDING&quot;,&quot;totalRows&quot;:0,&quot;successRows&quot;:0,&quot;failRows&quot;:0,&quot;failDetail&quot;:[],&quot;costTimeMs&quot;:0}}</stringProp>
+              <stringProp name="Header.value">eyJhbGciOiJIUzI1NiJ9.eyJpZCI6NSwiZXhwIjoxNzg2NTM3NjQyLCJpYXQiOjE3ODY1MjMyNDIsInVzZXJuYW1lIjoiY3hrIn0.WUgkbrJk-rnkCDUz0jTPR4N-kuGObwIycYglngsnhXU</stringProp>
             </elementProp>
           </collectionProp>
         </HeaderManager>
         <hashTree/>
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="STEP1-上传Excel创建任务" enabled="true">
+          <elementProp name="HTTPsampler.Files" elementType="HTTPFileArgs">
+            <collectionProp name="HTTPFileArgs.files">
+              <elementProp name="E:/后端/项目练习/smartPark/load-test/test-files/bill-10k-500kb.xlsx" elementType="HTTPFileArg">
+                <stringProp name="File.path">E:/后端/项目练习/smartPark/load-test/test-files/bill-10k-500kb.xlsx</stringProp>
+                <stringProp name="File.paramname">file</stringProp>
+                <stringProp name="File.mimetype">application/vnd.openxmlformats-officedocument.spreadsheetml.sheet</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true">
             <collectionProp name="Arguments.arguments">
               <elementProp name="file" elementType="HTTPArgument">

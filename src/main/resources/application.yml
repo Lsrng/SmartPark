@@ -1,11 +1,20 @@
 server:
   port: 8086
 
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+
 spring:
   profiles:
     active: dev
   main:
     allow-circular-references: true
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 50MB
+      resolve-lazily: true
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/smart_park?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
