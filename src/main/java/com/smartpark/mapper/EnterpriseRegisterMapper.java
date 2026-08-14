@@ -1,9 +1,0 @@
-package com.smartpark.mapper;
-
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.smartpark.pojo.entity.enterprise.EnterpriseRegister;
-import org.apache.ibatis.annotations.Mapper;
-
-@Mapper
-public interface EnterpriseRegisterMapper extends BaseMapper<EnterpriseRegister> {
-}

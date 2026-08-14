@@ -1,6 +1,5 @@
 package com.smartpark.handler;
 
-import com.smartpark.common.exception.EnterpriseCheckException;
 import com.smartpark.common.exception.RateLimitException;
 import com.smartpark.common.result.Result;
 import com.smartpark.upload.exception.*;
@@ -25,16 +24,6 @@ public class GlobalExceptionHandler {
     public Result<Void> handleRateLimitException(RateLimitException e) {
         log.warn("限流拦截 - 设备ID: {}, 原因: {}", e.getDeviceId(), e.getMessage());
         return Result.error(429, e.getMessage());
-    }
-
-    /**
-     * 处理企业入驻校验异常
-     */
-    @ExceptionHandler(EnterpriseCheckException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Result<Void> handleEnterpriseCheckException(EnterpriseCheckException e) {
-        log.warn("入驻校验失败: {}", e.getMessage());
-        return Result.error(400, e.getMessage());
     }
 
     /**
