@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smartpark.mapper.ValidationConfigMapper">
+
+    <select id="selectByTypeAndVersion" resultType="com.smartpark.pojo.entity.ValidationConfig">
+        SELECT id, enterprise_type_id, strategy_id, step_order, config_version,
+               enabled, created_at, updated_at
+        FROM validation_config
+        WHERE enterprise_type_id = #{enterpriseTypeId}
+          AND config_version = #{configVersion}
+          AND enabled = 1
+        ORDER BY step_order ASC
+    </select>
+
+    <select id="selectAllEnabled" resultType="com.smartpark.pojo.entity.ValidationConfig">
+        SELECT id, enterprise_type_id, strategy_id, step_order, config_version,
+               enabled, created_at, updated_at
+        FROM validation_config
+        WHERE enabled = 1
+    </select>
+
+</mapper>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smartpark.mapper.EnterpriseCheckRecordMapper">
+
+    <select id="selectByRegisterId" resultType="com.smartpark.pojo.entity.EnterpriseCheckRecord">
+        SELECT id, register_id, step_order, strategy_id, status,
+               form_data, check_result, error_code, error_message,
+               operator_id, created_at, updated_at
+        FROM enterprise_check_record
+        WHERE register_id = #{registerId}
+        ORDER BY step_order ASC
+    </select>
+
+    <select id="isStepPassed" resultType="boolean">
+        SELECT COUNT(*) > 0
+        FROM enterprise_check_record
+        WHERE register_id = #{registerId}
+          AND step_order = #{stepOrder}
+          AND status = 'PASSED'
+    </select>
+
+</mapper>
